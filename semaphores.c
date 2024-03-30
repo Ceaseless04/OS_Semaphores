@@ -1,3 +1,9 @@
+/*
+ *	Programmed by: Kristian Vazquez
+ *
+ *	Description: The program implements a solution to the readers-writer problem using semaphores and threads in C. It takes the number of readers as a command-line argument, ensuring it's between 1 and 12. Two semaphores are used: mutex for mutual exclusion among readers and wrt to ensure exclusive access for the writer. Reader threads execute the reader function, which enters a critical section to read the shared counter value and prints it. Writer thread executes the writer function, which enters a critical section to increment the shared counter value. Readers and writer coordinate access to the shared resource using semaphores to prevent race conditions and ensure mutual exclusion. The program ensures fairness between readers and the writer by allowing both to access the shared resource without starving any of them. Each reader reads the shared counter value 2000000 times in its critical section, while the writer increments it 25000 times. After completing execution, the program joins all threads and destroys the semaphores before exiting.
+ * */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -17,16 +23,15 @@ void *reader(void *arg) {
         sem_wait(&mutex);
         reader_count++;
         if (reader_count == 1) {
-            sem_wait(&wrt);
+            // Prevent write if readcer is first
+			sem_wait(&wrt);
         }
         sem_post(&mutex);
-	
-
-
 
 		sem_wait(&mutex);
 		reader_count--;
 		if (reader_count == 0) {
+			// Allow if not more readers
 			sem_post(&wrt);
 		}
 		sem_post(&mutex);
@@ -39,9 +44,11 @@ void *reader(void *arg) {
 
 void *writer(void *arg) {
     for (int i = 0; i < MAX_COUNTER_WRITES; i++) {
-        sem_wait(&wrt);
+        // Wait for writer to be available
+		sem_wait(&wrt);
         // Writing to the shared counter value
         counter += 1;
+		// release writer
         sem_post(&wrt);
     }
     printf("Writer Done!\n");
@@ -71,6 +78,7 @@ int main(int argc, char *argv[]) {
 
 	pthread_create(&writer_thread, NULL, writer, NULL);
 
+	// wait for the writer thread to finish
     pthread_join(writer_thread, NULL);
 
     for (int i = 0; i < num_readers; i++) {
